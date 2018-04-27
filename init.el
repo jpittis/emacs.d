@@ -36,7 +36,9 @@
  '(custom-safe-themes
    (quote
     ("8aebf25556399b58091e533e455dd50a6a9cba958cc4ebb0aab175863c25b9a4" "d677ef584c6dfc0697901a44b885cc18e206f05114c8a3b7fde674fce6180879" default)))
- '(package-selected-packages (quote (autopair solarized-theme evil))))
+ '(package-selected-packages
+   (quote
+    (flycheck-rust rust-mode autopair solarized-theme evil))))
 
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
@@ -85,7 +87,7 @@
 (evil-mode t)
 
 ;; Don't move the cursor back when leaving insert mode.
-(setq evil-move-cursor-back nil)
+; (setq evil-move-cursor-back nil)
 
 ;; Make escape work!
 (defun minibuffer-keyboard-quit ()
@@ -109,3 +111,18 @@
 (defun open-emacs-init ()
   (interactive)
   (find-file "~/.emacs.d/init.el"))
+
+;; -------------------- Flycheck ---------------------------
+
+(require 'flycheck)
+(add-hook 'after-init-hook #'global-flycheck-mode)
+
+(setq flycheck-check-syntax-automatically '(save mode-enabled))
+(setq-default flycheck-disabled-checkers '(emacs-lisp-checkdoc))
+
+(global-flycheck-mode t)
+
+;; --- Rust mode. ---
+
+(with-eval-after-load 'rust-mode
+  (add-hook 'flycheck-mode-hook #'flycheck-rust-setup))
