@@ -128,17 +128,6 @@
 ;; Use bash by default.
 (setq explicit-shell-file-name "/usr/local/bin/bash")
 
-;; Kill buffer when terminal finishes.
-(defun oleh-term-exec-hook ()
-  (let* ((buff (current-buffer))
-         (proc (get-buffer-process buff)))
-    (set-process-sentinel
-     proc
-     `(lambda (process event)
-        (if (string= event "finished\n")
-            (kill-buffer ,buff))))))
-(add-hook 'term-exec-hook 'oleh-term-exec-hook)
-
 (defun open-terminal ()
   (interactive)
   (ansi-term "/usr/local/bin/bash"))
@@ -146,7 +135,6 @@
 (defun term-use-utf8 ()
   (set-buffer-process-coding-system 'utf-8-unix 'utf-8-unix))
 (add-hook 'term-exec-hook 'term-use-utf8)
-
 
 ;;; --- Flycheck. ---
 
@@ -173,13 +161,7 @@
 ;; Some hacky code to start fzf from the projects root dir.
 (defun in-project-root-dir (path)
   (file-directory-p (concat path ".git")))
-  
-(defun fzf-git (&optional path)
-  (interactive)
-  (or path (setq path "./"))
-  (if (in-project-root-dir path)
-      (progn
-        (fzf-directory path) (message path))
-    (let* ((current-dir (file-name-as-directory (file-truename path)))
-           (parent-dir (concat current-dir "../")))
-      (fzf-git parent-dir))))
+
+;;; --- Debugging. ---
+
+(setq debug-on-error t)
