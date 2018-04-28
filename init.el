@@ -1,4 +1,8 @@
-;;; "Let's use Emacs again! It'll be great!" (Jake Pittis 2018)
+;;;; "Let's use Emacs again! It'll be great!"
+;;;; Jake Pittis 2018
+
+;;; --- Emacs daemon. ---
+; (server-start)
 
 ;;; --- Package management. ---
 
@@ -27,6 +31,9 @@
 (setq line-number-mode t)
 (setq column-number-mode t)
 
+;; Use the shell PATH rather than the sketchy default mac app one.
+(exec-path-from-shell-initialize)
+
 ;; Some auto generated code added by Custom.
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
@@ -38,7 +45,7 @@
     ("8aebf25556399b58091e533e455dd50a6a9cba958cc4ebb0aab175863c25b9a4" "d677ef584c6dfc0697901a44b885cc18e206f05114c8a3b7fde674fce6180879" default)))
  '(package-selected-packages
    (quote
-    (flycheck-rust rust-mode autopair solarized-theme evil))))
+    (exec-path-from-shell fzf flycheck-rust rust-mode autopair solarized-theme evil))))
 
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
@@ -57,6 +64,7 @@
 (load-theme 'solarized-dark t)
 
 ;; Toggle between dark and light.
+(defvar active-theme)
 (setq active-theme 'solarized-dark)
 (defun toggle-theme ()
   (interactive)
@@ -86,9 +94,6 @@
 (require 'evil)
 (evil-mode t)
 
-;; Don't move the cursor back when leaving insert mode.
-; (setq evil-move-cursor-back nil)
-
 ;; Make escape work!
 (defun minibuffer-keyboard-quit ()
   (interactive)
@@ -106,13 +111,44 @@
 (global-set-key [escape] 'evil-exit-emacs-state)
 
 (evil-leader/set-key
-  "e" 'open-emacs-init)
+  "e" 'open-emacs-init
+  "t" 'open-terminal
+  "o" 'fzf-git)
 
 (defun open-emacs-init ()
   (interactive)
   (find-file "~/.emacs.d/init.el"))
 
-;; -------------------- Flycheck ---------------------------
+;;; --- Terminal stuff ---
+
+;; Terminal copy paste works in normal mode.
+(eval-after-load "term"
+  '(define-key evil-normal-state-map (kbd "p") 'term-paste))
+
+;; Use bash by default.
+(setq explicit-shell-file-name "/usr/local/bin/bash")
+
+;; Kill buffer when terminal finishes.
+(defun oleh-term-exec-hook ()
+  (let* ((buff (current-buffer))
+         (proc (get-buffer-process buff)))
+    (set-process-sentinel
+     proc
+     `(lambda (process event)
+        (if (string= event "finished\n")
+            (kill-buffer ,buff))))))
+(add-hook 'term-exec-hook 'oleh-term-exec-hook)
+
+(defun open-terminal ()
+  (interactive)
+  (ansi-term "/usr/local/bin/bash"))
+
+(defun term-use-utf8 ()
+  (set-buffer-process-coding-system 'utf-8-unix 'utf-8-unix))
+(add-hook 'term-exec-hook 'term-use-utf8)
+
+
+;;; --- Flycheck. ---
 
 (require 'flycheck)
 (add-hook 'after-init-hook #'global-flycheck-mode)
@@ -122,7 +158,28 @@
 
 (global-flycheck-mode t)
 
-;; --- Rust mode. ---
+;;; --- Rust mode. ---
 
 (with-eval-after-load 'rust-mode
   (add-hook 'flycheck-mode-hook #'flycheck-rust-setup))
+
+;;; --- Fzf. ---
+
+;; Found this on an fzf issue.
+(defadvice fzf/start (after normalize-fzf-mode-line activate)
+  "Hide the modeline so FZF will render properly."
+  (setq mode-line-format nil))
+
+;; Some hacky code to start fzf from the projects root dir.
+(defun in-project-root-dir (path)
+  (file-directory-p (concat path ".git")))
+  
+(defun fzf-git (&optional path)
+  (interactive)
+  (or path (setq path "./"))
+  (if (in-project-root-dir path)
+      (progn
+        (fzf-directory path) (message path))
+    (let* ((current-dir (file-name-as-directory (file-truename path)))
+           (parent-dir (concat current-dir "../")))
+      (fzf-git parent-dir))))
